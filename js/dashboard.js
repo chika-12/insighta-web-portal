@@ -14,19 +14,43 @@ let state = {
 };
 
 // ── API helper ─────────────────────────────────────────────────────────────
+function getCsrfToken() {
+  return (
+    document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('csrf_token='))
+      ?.split('=')[1] || ''
+  );
+}
+
 async function api(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+
+  // Attach CSRF token only for mutating requests
+  const csrfHeaders = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+    ? { 'x-csrf-token': getCsrfToken() }
+    : {};
+
   const res = await fetch(`${BASE_URL}${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...csrfHeaders,
+      ...(options.headers || {}),
+    },
     ...options,
   });
 
+  // Handle expired session
   if (res.status === 401) {
     const refreshed = await tryRefresh();
+
     if (!refreshed) {
       window.location.href = '/index.html';
       return null;
     }
+
+    // Retry original request after refresh
     return api(path, options);
   }
 
