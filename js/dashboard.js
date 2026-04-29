@@ -8,7 +8,6 @@ let state = {
   gender: '',
   age_group: '',
   country_id: '',
-  search: '',
   isSearchMode: false,
   totalPages: 1,
   total: 0,
@@ -17,19 +16,17 @@ let state = {
 // ── API helper ─────────────────────────────────────────────────────────────
 async function api(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
-    credentials: 'include', // sends httpOnly cookies automatically
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
   });
 
   if (res.status === 401) {
-    // Try refreshing first
     const refreshed = await tryRefresh();
     if (!refreshed) {
       window.location.href = '/index.html';
       return null;
     }
-    // Retry original request
     return api(path, options);
   }
 
@@ -42,7 +39,7 @@ async function tryRefresh() {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}), // server reads from cookie
+      body: JSON.stringify({}),
     });
     return res.ok;
   } catch {
@@ -79,9 +76,7 @@ async function loadUser() {
     badge.textContent = data.role;
     badge.className = `role-badge ${data.role}`;
 
-    if (data.role === 'admin') {
-      document.body.classList.add('is-admin');
-    }
+    if (data.role === 'admin') document.body.classList.add('is-admin');
   } catch (e) {
     console.error('loadUser error', e);
   }
@@ -107,7 +102,7 @@ async function loadProfiles() {
       return;
     }
     const json = await res.json();
-    renderTable(json.data || json.profiles || []);
+    renderTable(json.data || []);
     updatePagination(json);
   } catch (e) {
     showToast('Network error', 'error');
@@ -137,10 +132,8 @@ async function applySearch() {
       return;
     }
     const json = await res.json();
-
-    if (json.interpreted) {
+    if (json.interpreted)
       showToast(`Interpreted: ${JSON.stringify(json.interpreted)}`, 'success');
-    }
     renderTable(json.data || []);
     updatePagination(json);
   } catch (e) {
@@ -154,53 +147,15 @@ async function viewProfile(id) {
   try {
     const res = await api(`/profiles/${id}`);
     if (!res || !res.ok) {
-      showToast('Could not load profile', 'error');
+      const err = await res.json().catch(() => ({}));
+      showToast(err.message || `Error ${res.status}`, 'error');
       return;
     }
     const json = await res.json();
-    const p = json.data || json;
-    openDetail(p);
+    openDetail(json.data || json);
   } catch (e) {
     showToast('Network error', 'error');
-  }
-}
-
-// ── POST /profiles ─────────────────────────────────────────────────────────
-async function createProfile() {
-  const body = {
-    first_name: document.getElementById('new-fname').value.trim(),
-    last_name: document.getElementById('new-lname').value.trim(),
-    gender: document.getElementById('new-gender').value,
-    age_group: document.getElementById('new-age_group').value,
-    age: Number(document.getElementById('new-age').value),
-    country_id: document
-      .getElementById('new-country_id')
-      .value.trim()
-      .toUpperCase(),
-    gender_probability: Number(
-      document.getElementById('new-gender_probability').value
-    ),
-    country_probability: Number(
-      document.getElementById('new-country_probability').value
-    ),
-  };
-
-  try {
-    const res = await api('/profiles', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
-    if (!res) return;
-    if (!res.ok) {
-      const err = await res.json();
-      showToast(err.message || 'Create failed', 'error');
-      return;
-    }
-    showToast('Profile created ✓', 'success');
-    closeCreateModal();
-    loadProfiles();
-  } catch (e) {
-    showToast('Network error', 'error');
+    console.error(e);
   }
 }
 
@@ -211,13 +166,16 @@ async function deleteProfile(id) {
     const res = await api(`/profiles/${id}`, { method: 'DELETE' });
     if (!res) return;
     if (!res.ok) {
-      showToast('Delete failed', 'error');
+      const err = await res.json().catch(() => ({}));
+      showToast(err.message || 'Delete failed', 'error');
       return;
     }
     showToast('Profile deleted', 'success');
+    closeDetail();
     loadProfiles();
   } catch (e) {
     showToast('Network error', 'error');
+    console.error(e);
   }
 }
 
@@ -278,7 +236,6 @@ function clearAll() {
     gender: '',
     age_group: '',
     country_id: '',
-    search: '',
     isSearchMode: false,
   };
   loadProfiles();
@@ -310,33 +267,28 @@ function renderTable(profiles) {
     return;
   }
 
+  const isAdmin = document.body.classList.contains('is-admin');
+
   tbody.innerHTML = profiles
     .map((p) => {
       const genderClass = p.gender === 'female' ? 'female' : 'male';
       const gProb = Math.round((p.gender_probability || 0) * 100);
       const cProb = Math.round((p.country_probability || 0) * 100);
-      const shortId = String(p._id || p.id || '').slice(-6);
-      const isAdmin = document.body.classList.contains('is-admin');
+      const shortId = String(p.id || '').slice(-6);
 
       return `
       <tr>
         <td style="color:var(--muted);font-size:10px">...${shortId}</td>
-        <td>${p.first_name || ''} ${p.last_name || ''}</td>
+        <td>${p.name || '—'}</td>
         <td><span class="gender-badge ${genderClass}">${p.gender || '—'}</span></td>
         <td><span class="age-group">${p.age_group || '—'}</span></td>
         <td>${p.age || '—'}</td>
         <td>${p.country_id || '—'}</td>
+        <td>${gProb}% <span class="prob-bar"><span class="prob-fill" style="width:${gProb}%"></span></span></td>
+        <td>${cProb}% <span class="prob-bar"><span class="prob-fill" style="width:${cProb}%"></span></span></td>
         <td>
-          ${gProb}%
-          <span class="prob-bar"><span class="prob-fill" style="width:${gProb}%"></span></span>
-        </td>
-        <td>
-          ${cProb}%
-          <span class="prob-bar"><span class="prob-fill" style="width:${cProb}%"></span></span>
-        </td>
-        <td>
-          <button class="action-btn" onclick="viewProfile('${p._id || p.id}')">View</button>
-          ${isAdmin ? `<button class="action-btn del" onclick="deleteProfile('${p._id || p.id}')">Delete</button>` : ''}
+          <button class="action-btn" onclick="viewProfile('${p.id}')">View</button>
+          ${isAdmin ? `<button class="action-btn del" onclick="deleteProfile('${p.id}')">Delete</button>` : ''}
         </td>
       </tr>`;
     })
@@ -347,7 +299,7 @@ function updatePagination(json) {
   const total = json.total || 0;
   const totalPages = json.totalPages || 1;
   const page = json.page || state.page;
-  const shown = json.data?.length || json.profiles?.length || 0;
+  const shown = json.data?.length || 0;
 
   state.totalPages = totalPages;
 
@@ -364,17 +316,14 @@ function updatePagination(json) {
 
 // ── Detail Panel ───────────────────────────────────────────────────────────
 function openDetail(p) {
-  const panel = document.getElementById('detail-panel');
   const isAdmin = document.body.classList.contains('is-admin');
   document.getElementById('detail-content').innerHTML = `
     <div style="margin-bottom:24px">
-      <div class="detail-label">Full Name</div>
-      <div class="detail-value" style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700">
-        ${p.first_name || ''} ${p.last_name || ''}
-      </div>
+      <div class="detail-label">Name</div>
+      <div class="detail-value" style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700">${p.name || '—'}</div>
     </div>
     <div class="detail-label">Profile ID</div>
-    <div class="detail-value" style="color:var(--muted);font-size:11px">${p._id || p.id}</div>
+    <div class="detail-value" style="color:var(--muted);font-size:11px">${p.id}</div>
     <div class="detail-divider"></div>
     <div class="detail-label">Gender</div>
     <div class="detail-value">${p.gender || '—'} <span style="color:var(--muted);font-size:11px">(${Math.round((p.gender_probability || 0) * 100)}% confidence)</span></div>
@@ -388,13 +337,13 @@ function openDetail(p) {
     ${
       isAdmin
         ? `
-    <div class="detail-divider"></div>
-    <button class="btn-danger" style="width:100%" onclick="deleteProfile('${p._id || p.id}');closeDetail()">Delete Profile</button>
+      <div class="detail-divider"></div>
+      <button class="btn-danger" style="width:100%" onclick="deleteProfile('${p.id}');closeDetail()">Delete Profile</button>
     `
         : ''
     }
   `;
-  panel.classList.add('open');
+  document.getElementById('detail-panel').classList.add('open');
 }
 
 function closeDetail() {
