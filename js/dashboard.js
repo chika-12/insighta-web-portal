@@ -210,6 +210,61 @@ async function logout() {
   }
 }
 
+// ── POST /profiles ─────────────────────────────────────────────────────────
+async function submitCreateProfile() {
+  const nameInput = document.getElementById('new-name');
+  const errorEl = document.getElementById('create-error');
+  const submitBtn = document.getElementById('create-submit-btn');
+  const name = nameInput.value.trim();
+
+  errorEl.style.display = 'none';
+  errorEl.textContent = '';
+
+  if (!name) {
+    errorEl.textContent = 'Name is required.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  submitBtn.textContent = 'Creating...';
+  submitBtn.disabled = true;
+
+  try {
+    const res = await api('/profiles', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+
+    if (!res) return;
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      errorEl.textContent = json.message || `Error ${res.status}`;
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    showToast(
+      json.message === 'Profile already exists'
+        ? `"${name}" already exists`
+        : `Profile "${name}" created ✓`,
+      'success'
+    );
+
+    nameInput.value = '';
+    closeCreateModal();
+    loadProfiles();
+  } catch (e) {
+    errorEl.textContent = 'Network error. Try again.';
+    errorEl.style.display = 'block';
+    console.error(e);
+  } finally {
+    submitBtn.textContent = 'Create Profile';
+    submitBtn.disabled = false;
+  }
+}
+
 // ── Filters & Pagination ───────────────────────────────────────────────────
 function applyFilters() {
   state.gender = document.getElementById('filter-gender').value;
@@ -354,8 +409,11 @@ function closeDetail() {
 function openCreateModal() {
   document.getElementById('create-modal').classList.add('open');
 }
+
 function closeCreateModal() {
   document.getElementById('create-modal').classList.remove('open');
+  document.getElementById('new-name').value = '';
+  document.getElementById('create-error').style.display = 'none';
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────

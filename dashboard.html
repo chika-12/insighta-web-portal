@@ -525,11 +525,6 @@
       .form-input:focus {
         border-color: var(--accent);
       }
-      .form-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
       .modal-actions {
         display: flex;
         gap: 10px;
@@ -802,87 +797,42 @@
       <div class="modal">
         <button class="close-modal" onclick="closeCreateModal()">×</button>
         <h3>Create <span>Profile</span></h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">First Name</label>
-            <input
-              class="form-input"
-              type="text"
-              id="new-fname"
-              placeholder="e.g. Amara"
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Last Name</label>
-            <input
-              class="form-input"
-              type="text"
-              id="new-lname"
-              placeholder="e.g. Osei"
-            />
-          </div>
+        <p
+          style="
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 24px;
+            line-height: 1.6;
+          "
+        >
+          Enter a name. Gender, age, and nationality will be inferred
+          automatically via Genderize, Agify, and Nationalize APIs.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input
+            class="form-input"
+            type="text"
+            id="new-name"
+            placeholder="e.g. Amara"
+            onkeydown="if (event.key === 'Enter') submitCreateProfile();"
+          />
         </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Gender</label>
-            <select class="form-input" id="new-gender">
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Age Group</label>
-            <select class="form-input" id="new-age_group">
-              <option value="child">Child</option>
-              <option value="teenager">Teenager</option>
-              <option value="adult">Adult</option>
-              <option value="senior">Senior</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Age</label>
-            <input
-              class="form-input"
-              type="text"
-              id="new-age"
-              placeholder="e.g. 34"
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Country ID (ISO)</label>
-            <input
-              class="form-input"
-              type="text"
-              id="new-country_id"
-              placeholder="e.g. GH"
-              maxlength="2"
-            />
-          </div>
-        </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">Gender Probability</label>
-            <input
-              class="form-input"
-              type="text"
-              id="new-gender_probability"
-              placeholder="0.0 – 1.0"
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Country Probability</label>
-            <input
-              class="form-input"
-              type="text"
-              id="new-country_probability"
-              placeholder="0.0 – 1.0"
-            />
-          </div>
-        </div>
+        <div
+          id="create-error"
+          style="
+            font-size: 11px;
+            color: var(--danger);
+            margin-top: 8px;
+            display: none;
+          "
+        ></div>
         <div class="modal-actions">
-          <button class="btn-primary" onclick="createProfile()">
+          <button
+            class="btn-primary"
+            id="create-submit-btn"
+            onclick="submitCreateProfile()"
+          >
             Create Profile
           </button>
           <button class="btn-outline" onclick="closeCreateModal()">
