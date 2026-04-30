@@ -13,7 +13,7 @@ let state = {
   total: 0,
 };
 
-// ── API helper ─────────────────────────────────────────────────────────────
+// ── CSRF (passed via redirect query param) ─────────────────────────────────
 let _csrfToken = '';
 
 function initCsrf() {
@@ -21,10 +21,12 @@ function initCsrf() {
   _csrfToken = params.get('csrf') || '';
   window.history.replaceState({}, '', '/dashboard.html');
 }
+
 function getCsrfToken() {
   return _csrfToken;
 }
 
+// ── API helper ─────────────────────────────────────────────────────────────
 async function api(path, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
 
@@ -80,12 +82,6 @@ function showToast(msg, type = 'success') {
   t.className = `toast ${type} show`;
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 3500);
-}
-
-// ── Init ───────────────────────────────────────────────────────────────────
-async function init() {
-  await loadUser();
-  await loadProfiles();
 }
 
 // ── GET /auth/me ───────────────────────────────────────────────────────────
@@ -443,4 +439,10 @@ function closeCreateModal() {
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────
+async function init() {
+  initCsrf();
+  await loadUser();
+  await loadProfiles();
+}
+
 init();
