@@ -39,6 +39,7 @@ async function api(path, options = {}) {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      'api-version': 'v1',
       ...csrfHeaders,
       ...(options.headers || {}),
     },
@@ -66,7 +67,7 @@ async function tryRefresh() {
     const res = await fetch(`${BASE_URL}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'api-version': 'v1' },
       body: JSON.stringify({}),
     });
     return res.ok;
