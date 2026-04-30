@@ -14,13 +14,15 @@ let state = {
 };
 
 // ── API helper ─────────────────────────────────────────────────────────────
+let _csrfToken = '';
+
+function initCsrf() {
+  const params = new URLSearchParams(window.location.search);
+  _csrfToken = params.get('csrf') || '';
+  window.history.replaceState({}, '', '/dashboard.html');
+}
 function getCsrfToken() {
-  return (
-    document.cookie
-      .split('; ')
-      .find((row) => row.startsWith('csrf_token='))
-      ?.split('=')[1] || ''
-  );
+  return _csrfToken;
 }
 
 async function api(path, options = {}) {
