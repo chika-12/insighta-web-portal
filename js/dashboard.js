@@ -148,7 +148,7 @@ async function applySearch() {
 
   try {
     const res = await api(
-      `/profiles/search?q=${encodeURIComponent(q)}&page=${state.page}&limit=${state.limit}`
+      `/profiles/search?q=${encodeURIComponent(q)}&page=${state.page}&limit=${state.limit}`,
     );
     if (!res || !res.ok) {
       showToast('Search failed', 'error');
@@ -272,7 +272,7 @@ async function submitCreateProfile() {
       json.message === 'Profile already exists'
         ? `"${name}" already exists`
         : `Profile "${name}" created ✓`,
-      'success'
+      'success',
     );
 
     nameInput.value = '';
@@ -437,6 +437,81 @@ function closeCreateModal() {
   document.getElementById('create-modal').classList.remove('open');
   document.getElementById('new-name').value = '';
   document.getElementById('create-error').style.display = 'none';
+}
+
+// ── CSV Batch Ingestion ────────────────────────────────────────────────────
+function openCsvModal() {
+  if (!document.body.classList.contains('is-admin')) return;
+  document.getElementById('csv-modal').classList.add('open');
+  document.getElementById('csv-result').hidden = true;
+  document.getElementById('csv-error').hidden = true;
+  document.getElementById('csv-file-input').value = '';
+}
+
+function closeCsvModal() {
+  document.getElementById('csv-modal').classList.remove('open');
+}
+
+async function submitCsvUpload() {
+  const fileInput = document.getElementById('csv-file-input');
+  const errorEl = document.getElementById('csv-error');
+  const resultEl = document.getElementById('csv-result');
+  const submitBtn = document.getElementById('csv-submit-btn');
+
+  errorEl.hidden = true;
+  resultEl.hidden = true;
+
+  if (!fileInput.files.length) {
+    errorEl.textContent = 'Please select a CSV file.';
+    errorEl.hidden = false;
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  submitBtn.textContent = 'Uploading...';
+  submitBtn.disabled = true;
+
+  try {
+    // Do NOT use api() — browser must set Content-Type with boundary itself
+    const res = await fetch(`${BASE_URL}/profiles/ingest/csv`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'api-version': 'v1',
+        'x-csrf-token': getCsrfToken(),
+      },
+      body: formData,
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      errorEl.textContent = json.message || `Upload failed (${res.status})`;
+      errorEl.hidden = false;
+      return;
+    }
+
+    document.getElementById('csv-inserted').textContent = json.inserted ?? '—';
+    document.getElementById('csv-skipped').textContent = json.skipped ?? '—';
+    document.getElementById('csv-errors').textContent =
+      json.errors?.length ?? '—';
+    resultEl.hidden = false;
+
+    showToast(
+      `CSV imported — ${json.inserted} inserted, ${json.skipped} skipped`,
+      'success',
+    );
+    loadProfiles();
+  } catch (e) {
+    errorEl.textContent = 'Network error. Try again.';
+    errorEl.hidden = false;
+    console.error(e);
+  } finally {
+    submitBtn.textContent = 'Upload';
+    submitBtn.disabled = false;
+  }
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────
