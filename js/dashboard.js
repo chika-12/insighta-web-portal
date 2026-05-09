@@ -106,6 +106,7 @@ async function loadUser() {
 }
 
 // ── GET /profiles ──────────────────────────────────────────────────────────
+
 async function loadProfiles() {
   setTableLoading();
 
@@ -125,8 +126,9 @@ async function loadProfiles() {
       return;
     }
     const json = await res.json();
-    renderTable(json.data || []);
-    updatePagination(json);
+    const payload = json.source === 'redis' ? json.cached : json;
+    renderTable(payload.data || []);
+    updatePagination(payload);
   } catch (e) {
     showToast('Network error', 'error');
     console.error(e);
@@ -155,10 +157,14 @@ async function applySearch() {
       return;
     }
     const json = await res.json();
-    if (json.interpreted)
-      showToast(`Interpreted: ${JSON.stringify(json.interpreted)}`, 'success');
-    renderTable(json.data || []);
-    updatePagination(json);
+    const payload = json.source === 'redis' ? json.cached : json;
+    if (payload.interpreted)
+      showToast(
+        `Interpreted: ${JSON.stringify(payload.interpreted)}`,
+        'success',
+      );
+    renderTable(payload.data || []);
+    updatePagination(payload);
   } catch (e) {
     showToast('Network error', 'error');
     console.error(e);
@@ -373,11 +379,11 @@ function renderTable(profiles) {
     .join('');
 }
 
-function updatePagination(json) {
-  const total = json.total || 0;
-  const totalPages = json.totalPages || 1;
-  const page = json.page || state.page;
-  const shown = json.data?.length || 0;
+function updatePagination(payload) {
+  const total = payload.total || 0;
+  const totalPages = payload.total_pages || payload.totalPages || 1;
+  const page = payload.page || state.page;
+  const shown = payload.data?.length || 0;
 
   state.totalPages = totalPages;
 
@@ -391,7 +397,6 @@ function updatePagination(json) {
   document.getElementById('btn-prev').disabled = page <= 1;
   document.getElementById('btn-next').disabled = page >= totalPages;
 }
-
 // ── Detail Panel ───────────────────────────────────────────────────────────
 function openDetail(p) {
   const isAdmin = document.body.classList.contains('is-admin');
