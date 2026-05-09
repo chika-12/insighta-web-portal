@@ -18,7 +18,15 @@ let _csrfToken = '';
 
 function initCsrf() {
   const params = new URLSearchParams(window.location.search);
-  _csrfToken = params.get('csrf') || '';
+  const tokenFromUrl = params.get('csrf');
+
+  if (tokenFromUrl) {
+    _csrfToken = tokenFromUrl;
+    sessionStorage.setItem('csrf', tokenFromUrl);
+  } else {
+    _csrfToken = sessionStorage.getItem('csrf') || '';
+  }
+
   window.history.replaceState({}, '', '/dashboard.html');
 }
 
